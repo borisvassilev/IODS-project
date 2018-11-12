@@ -26,7 +26,34 @@ p4 <- p3 + ggtitle("Student's attitude versus exam points")
 p4
 ```
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using  
+There is a positive correlation between attitude and points.
+There is no obvious difference between the two genders.
+Interestingly, there are only two genders.
+
+Now, plot all possible pairs of variables as scatter plots:
+
+```{r}
+pairs(learning2014[-1])
+```
+
+This is not very informative, since the plots are very small and there is no regression line to help us imagine which way the correlation goes.
+
+Drawing more advanced plots:
+
+```{r}
+library(GGally)
+library(ggplot2)
+
+# create a more advanced plot matrix with ggpairs()
+p <- ggpairs(learning2014, mapping = aes(col = gender, alpha = .3), lower = list(combo = wrap("facethist", bins = 20)))
+
+# draw the plot
+p
+```
+
+Apparently, attitude and points have the highest correlation by far.
+
+In addition, there is a negative correlation between surf and deep.
+
+There is a slight negative correlation between surf and points, surf and age, and surf and stra, as well as a positive correlation between stra and points.
 
