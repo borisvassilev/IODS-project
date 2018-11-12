@@ -43,4 +43,27 @@ lrn14$surf <- rowMeans(surface_columns)
 strategic_columns <- select(lrn14, one_of(strategic_questions))
 lrn14$stra <- rowMeans(strategic_columns)
 
+# choose a handful of columns to keep
+keep_columns <- c("gender","Age","attitude", "deep", "stra", "surf", "Points")
 
+# select the 'keep_columns' to create a new dataset
+learning2014 <- select(lrn14, one_of(keep_columns))
+# exclude observations where Points variable is 0
+learning2014 <- filter(learning2014, Points != 0)
+
+# see the stucture of the new dataset
+dim(learning2014)
+# --> 166 observations of 7 variables
+str(learning2014)
+# --> looks fine. Unclear why to normalize.
+
+learning2014 <- rename(learning2014, age = Age, points = Points)
+colnames(learning2014)
+# --> successfully renamed two columns
+
+write.table(learning2014, file = "data/learning2014.tsv", sep = "\t")
+
+learning2014.from_saved <- read.table("data/learning2014.tsv", sep = "\t")
+dim(learning2014.from_saved)
+str(learning2014.from_saved)
+head(learning2014.from_saved)
