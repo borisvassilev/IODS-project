@@ -51,9 +51,31 @@ p <- ggpairs(learning2014, mapping = aes(col = gender, alpha = .3), lower = list
 p
 ```
 
+Age seems to follow a Poisson distribution, probably because the subjects are students.
+The rest of the variables seem to have a normal distribution, as expected.
+
 Apparently, attitude and points have the highest correlation by far.
 
 In addition, there is a negative correlation between surf and deep.
 
 There is a slight negative correlation between surf and points, surf and age, and surf and stra, as well as a positive correlation between stra and points.
 
+Now, a regression analysis using the three variables that had the highest individual correlation with points:
+```{r}
+# create a regression model with three explanatory variables
+my_model2 <- lm(points ~ attitude + stra + surf, data = learning2014)
+
+# print out a summary of the model
+summary(my_model2)
+```
+
+There seems to be a statistically significant relationship between the chosen variables.
+Here are the diagnostic plots:
+```{r}
+par(mfrow = c(2,2))
+plot(my_model2, which = c(1, 2, 5))
+```
+
+Nothing looks out of the ordinary in these diagnostic plots.
+There is no reason not to trust the hypothesis that all three chosen variables -- attitude, stra, and surf, are explanatory variables for points.
+The correlation of course is not incredibly strong.
