@@ -1,8 +1,29 @@
 # Regression and model validation
 
+Load the wrangled data and take a look at it.
 ```{r}
 learning2014 <- read.table("data/learning2014.tsv", sep = "\t")
 str(learning2014)
+```
+
+Plot the data.
+```{r}
+library(ggplot2)
+
+# initialize plot with data and aesthetic mapping
+p1 <- ggplot(learning2014, aes(x = attitude, y = points, col = gender))
+
+# define the visualization type (points)
+p2 <- p1 + geom_point()
+
+# add a regression line
+p3 <- p2 + geom_smooth(method = "lm")
+
+# add a main title and draw the plot
+p4 <- p3 + ggtitle("Student's attitude versus exam points")
+
+# draw the plot
+p4
 ```
 
 - Describe your work and results clearly. 
