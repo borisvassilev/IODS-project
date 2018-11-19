@@ -24,7 +24,7 @@ str(por)
 join_by <- c("school","sex","age","address","famsize","Pstatus","Medu", "Fedu","Mjob","Fjob","reason","nursery","internet")
 
 # Join the two datasets by the selected identifiers
-math_por <- inner_join(mat, por, by = join_by, suffix=c(".math", ".por"))
+math_por <- inner_join(math, por, by = join_by, suffix=c(".math", ".por"))
 
 # Explore the joined dataset
 dim(math_por)

@@ -1,3 +1,183 @@
-# The third exercise
+# Logistic regression
 
-This is a placeholder.
+## Data
+The data was joined by using following columns as surrogate identifiers for students:
+school, sex, age, address, famsize, Pstatus, Medu, Fedu, Mjob, Fjob, reason, nursery, internet.
+
+Defined two new variables: alc_use and high_use.
+
+
+```{r}
+alc <- read.csv("data/alc.csv")
+str(alc)
+```
+
+## Predictors of high alcohol consumption
+
+The following four variables were chosen:
+
+goout, sex, studytime, and romantic.
+
+The hypothesis is that going out leads to dringking and males drink more because they are heavier on average.
+Furthermore, drinking and going out leaves less time for studying.
+Being in a relationship should reduce alcohol consumption since there is no need to get wasted and meet people.
+
+### Data exploration
+Explore the variables of interest:
+
+```{r exploratory_plots_3, fig.height=10, fig.width=12, warning=F, message=F}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+
+alc %>% group_by(high_use) %>% summarise(count = n(), mean_goout=mean(goout),
+                                         mean_studytime=mean(studytime))
+
+alc %>% group_by(high_use, sex) %>% summarise(count = n())
+
+alc %>% group_by(high_use, romantic) %>% summarise(count = n())
+
+g_goout <- ggplot(alc, aes(x = goout, fill=high_use)) +
+  geom_bar() + xlab("Going out with friends") +
+  ggtitle("Going out with friends from 1 (very low) to 5 (very high) by alcohol use")
+
+g_studytime <- ggplot(alc, aes(x = studytime, fill=high_use)) +
+  geom_bar() + xlab("Weekly study time") +
+  ggtitle("Weekly study time [1 (<2 hours), 2 (2 to 5 hours), 3 (5 to 10 hours), or 4 (>10 hours)] by alchol use")
+
+g_sex <- ggplot(alc, aes(x = sex, fill=high_use)) +
+  geom_bar() +
+  ggtitle("Sex by alcohol use")
+
+g_romantic <- ggplot(alc, aes(x = romantic, fill=high_use)) +
+  geom_bar() +
+  ggtitle("With a romantic relationship (yes/no) by alcohol use")
+
+# Arrange the plots into a grid
+library("gridExtra")
+grid.arrange(g_goout, g_studytime, g_sex, g_romantic, ncol=2, nrow=2)
+```
+
+In summary, all parts of the hypothesis seem to be correct.
+
+### Fitting a logistic regression model
+
+Fit a logistic regression model using high_use as the target variable and goout, studytime, sex, and romantic as explanatory variables.
+
+```{r logistic_regression_3}
+m <- glm(high_use ~ goout + studytime + sex + romantic, data = alc, family = "binomial")
+```
+
+Variables goout, studytime and sex are associated with alcohol consumption.
+
+High alcohol consumption is associated with going out (as expected).
+
+Males who drink less study more.
+
+Summary of the model:
+
+```{r logistic_regression_summary_3}
+summary(m)
+```
+
+Coefficients of the model as odds ratios and their confidence intervals:
+```{r logistic_regression_or_3, message=F}
+or <- coef(m) %>% exp
+ci <- confint(m) %>% exp
+cbind(or, ci)
+```
+
+In summary, 1 unit increase in goout is associated with 2.1 increase in likelihood of high alcohol consumption.
+
+1 unit increase in studytime is associated with 0.6 lower likelihood of high alcohol consumption.
+
+Being male is associated with 1.9 times increase in likelihood of high alcohol consumption compared to being female.
+
+Being in a romantic relationship is **not** significantly associated with a change in likelihood of high alcohol consumption, so the hypothesis was wrong.
+
+
+### Performance of the model
+Fit a logistic model with the explanatory variables that were statistically significantly associated to high or low alcohol consumption:
+```{r}
+m <- glm(high_use ~ goout + studytime + sex, data = alc, family = "binomial")
+```
+
+Prediction performance of the model:
+```{r}
+probability <- predict(m, type="response")
+alc <- mutate(alc, probability=probability)
+alc <- mutate(alc, prediction=probability > 0.5)
+table(high_use = alc$high_use, prediction = alc$prediction)
+
+```
+
+The model is better at predicting low alcohol consumption than high alcohol consumption.
+
+Visualizing the class, the predicted probabilities, and the predicted class:
+
+```{r}
+g <- ggplot(alc, aes(x = probability, y = high_use, col=prediction))
+g + geom_point()
+```
+
+Calculate the total proportion of misclassified individuals using the regression model.
+Use a simple guessing strategy where everyone is classified to be in the most prevalent class:
+```{r}
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+loss_func(class = alc$high_use, prob = alc$probability)
+
+loss_func(class = alc$high_use, prob = 0)
+```
+
+Using the regression model, 24.6% of the individuals are misclassified, compared to 29.8 % of misclassified individuals if guessing that everybody belongs to the low use of alcohol class.
+The model seems to provide modest improvement to the simple guess of the most prevalent class.
+
+### Cross-validation
+Perform 10-fold cross-validation of the model to estimate the performance of the model on unseen data.
+The performance of the model is measured with proportion of misclassified individuals.
+The mean prediction error in the test set:
+```{r}
+library(boot)
+cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10)
+cv$delta[1]
+```
+
+The mean prediction error in the test set is 0.25, marginally better than the performance of the model in the DataCamp exercises, with a mean prediction error of 0.26 in the test set.
+
+### Models with different number of predictors
+Construct models with different number of predictors and calculate the test set and training set prediction errors:
+```{r}
+predictors <- c('school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'reason', 'nursery', 'internet', 'guardian', 'traveltime', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'higher', 'romantic', 'famrel', 'freetime', 'goout', 'health', 'absences', 'G1', 'G2', 'G3')
+
+# Fit several models and record the test and traingin errors
+# 1) Use all of the predictors.
+# 2) Drop one predictor and fit a new model.
+# 3) Continue until only one predictor is left in the model.
+
+test_error <- numeric(length(predictors))
+training_error <- numeric(length(predictors))
+
+for(i in length(predictors):1) {
+  model_formula <- paste0("high_use ~ ", paste(predictors[1:i], collapse = " + "))
+  glmfit <- glm(model_formula, data = alc, family = "binomial")
+  cv <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10)
+  test_error[i] <- cv$delta[1]
+  training_error[i] <- loss_func(alc$high_use, predict(glmfit,type="response"))
+}
+
+data_error <- rbind(data.frame(n_predictors=1:length(predictors),
+                               prediction_error=test_error,
+                               type = "test error"),
+                    data.frame(n_predictors=1:length(predictors),
+                               prediction_error=training_error,
+                               type = "training error"))
+
+
+g <- ggplot(data_error, aes(x = n_predictors, y = prediction_error, col=type))
+g + geom_point()
+```
+
