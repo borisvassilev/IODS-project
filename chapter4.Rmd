@@ -1,1 +1,147 @@
-Just a placeholder.
+# Clustering and classification
+
+Load Boston dataset from the MASS package:
+```{r data_reading_e4, message=FALSE}
+library(corrplot)
+library(dplyr)
+library(MASS)
+data("Boston")
+str(Boston)
+```
+
+The dataset has 14 variables and 506 observations.
+Full details can be found [in the dataset's documentation](https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html).
+
+## Data exploration
+Summary of the variables in the dataset:
+```{r}
+summary(Boston)
+```
+
+Plot the variables and explore the data:
+```{r exploratory_plots_4, warning=F, message=F}
+library(GGally)
+library(ggplot2)
+p <- ggpairs(Boston, mapping = aes(alpha=0.3), 
+             lower = list(combo = wrap("facethist", bins = 20)))
+p
+```
+
+Correlation of the variables:
+```{r}
+cor(Boston) %>% corrplot(method = "circle", type = "upper", cl.pos = "b", tl.pos = "d")
+```
+
+## Data wrangling
+Scaling the dataset so that the average is $0$ and standard deviation is $1$:
+
+$$x_{scaled}=\frac{x - \mu_{x}}{\sigma_{x}}$$
+where $\mu_{x}$ is the mean of $x$ and $\sigma_{x}$ is the standard deviation of $x$.
+
+```{r}
+boston_scaled <- scale(Boston) %>% as.data.frame()
+summary(boston_scaled)
+```
+
+Create a factor variable crime from the crim by dividing crim by quartiles to "low", "med_low", "med_high" and "high" categories:
+```{r}
+bins <- quantile(boston_scaled$crim)
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE, 
+             label=c("low", "med_low", "med_high", "high"))
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+boston_scaled <- data.frame(boston_scaled, crime)
+```
+
+Divide the dataset to training and test sets so that 80% belongs to the training set and 20% belongs to the test set:
+```{r}
+set.seed(1)
+train.idx <- sample(nrow(boston_scaled), size = 0.8 * nrow(boston_scaled))
+train <- boston_scaled[train.idx,]
+test <- boston_scaled[-train.idx,]
+```
+
+## Linear discriminant analysis
+Fit the linear discriminant analysis (LDA) on the training set using the categorical crime rate as the target variable and all the other variables in the dataset as predictor variables:
+```{r}
+lda.fit <- lda(crime ~ ., data = train)
+```
+
+The LDA bi-plot:
+```{r}
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)) {
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]],
+         col = color, length = arrow_heads)
+  text(myscale * heads[,choices],
+       labels = row.names(heads), 
+       cex = tex, col = color, pos = 3)
+}
+classes <- as.numeric(train$crime)
+plot(lda.fit, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 2)
+```
+
+Use the fitted LDA model to predict the categorical crime rate in the test set.
+Cross-tabulate the observed classes and the predicted classes:
+```{r}
+correct_classes <- test$crime
+test <- dplyr::select(test, -crime)
+lda.pred <- predict(lda.fit, newdata = test)
+table(correct = correct_classes, predicted = lda.pred$class)
+```
+
+Model seems to perform perfectly at predicting the "high" class and predicts the other classes reasonably well.
+The prediction accuracy is worst for the "low" class.
+The model misclassifies a large proportion of the "low" observations as "med_low".
+
+## K-means clustering
+Reload the Boston dataset and standardize it as above.
+Calculate the Euclidean distance between the observations:
+```{r}
+data("Boston")
+boston_scaled <- scale(Boston) %>% as.data.frame()
+dist_eu <- dist(boston_scaled)
+summary(dist_eu)
+```
+
+Run the k-means algorithm with 3 clusters and visualize the results:
+```{r}
+# seeded above
+km <-kmeans(boston_scaled, centers = 3)
+pairs(boston_scaled, col = km$cluster)
+```
+
+Calculate the **t**otal of **w**ithin **c**luster **s**um of **s**quares (TWCSS) when the number of cluster changes from 1 to 10:
+```{r}
+k_max <- 10
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled, k)$tot.withinss})
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+```
+
+The optimal number of clusters is when the total WCSS drops radically.
+Based on the graph, 2 seems to be the optimal number.
+
+Perform k-means with 2 clusters and visualize the results:
+```{r}
+km <-kmeans(boston_scaled, centers = 2)
+pairs(boston_scaled, col = km$cluster)
+```
+
+## LDA of the k-means clusters
+Perform k-means clustering with 3 clusters on the scaled Boston dataset.
+Use the cluster assignments as the target variable for LDA analysis:
+```{r}
+km <-kmeans(boston_scaled, centers = 3)
+boston_scaled$kmeans_cluster <- km$cluster
+lda.fit <- lda(kmeans_cluster ~ ., data = boston_scaled)
+```
+
+The LDA bi-plot:
+```{r}
+plot(lda.fit, dimen = 2, col = boston_scaled$kmeans_cluster, pch = boston_scaled$kmeans_cluster)
+lda.arrows(lda.fit, myscale = 2)
+```
+
+Based on the biplot, the most influential linear separators are age, dis, rad, and tax.
