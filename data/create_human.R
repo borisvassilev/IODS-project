@@ -3,6 +3,7 @@
 # Exercise 4+5, Data wrangling
 
 library(dplyr)
+library(tidyr)
 
 hd <- read.csv(paste0("http://s3.amazonaws.com/assets.datacamp.com/production/", "course_2218/datasets/human_development.csv"), stringsAsFactors = F)
 gii <- read.csv(paste0("http://s3.amazonaws.com/assets.datacamp.com/production/", "course_2218/datasets/gender_inequality.csv"), stringsAsFactors = F, na.strings = "..")
@@ -70,4 +71,4 @@ human <- select(human, -Country)
 dim(human)
 
 # Write dataset to file
-write.csv(human, "data/human.csv", row.names = TRUE)
+write.csv(human, "human.csv", row.names = TRUE)

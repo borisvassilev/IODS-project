@@ -1,0 +1,138 @@
+# Dimensionality reduction techniques
+
+```{r message=FALSE}
+# Load libraries
+library(corrplot)
+library(dplyr)
+library(tidyr)
+```
+
+## Data
+
+Load the dataset:
+```{r}
+human <- read.csv('data/human.csv', row.names = 1)
+head(human)
+str(human)
+```
+
+The dataset contains 155 observation of 8 variables.
+The dataset combines several indicators from most countries in the world.
+The country names are the `rownames` of the data frame and the variables are:
+
+Health and knowledge:
+    * `GNI`: Gross National Income per capita
+    * `Life.Exp`: Life expectancy at birth
+    * `Edu.Exp`: Expected years of schooling 
+    * `Mat.Mor`: Maternal mortality ratio
+    * `Ado.Birth`: Adolescent birth rate
+
+Empowerment:
+    * `Parli.F`: Percentage of female representatives in parliament
+    * `Edu2.FM`: Ratio of females/males with at least secondary education
+    * `Labo.FM`: Ratio of females/males in the labour force
+
+## Data exploration
+Visualize the distribution of the variables and their dependencies:
+```{r fig.height=10, fig.width=12, fig.cap="Pairs-plot", warning=F, message=F}
+library(GGally)
+library(ggplot2)
+
+p <- ggpairs(human, mapping = aes(alpha=0.3), 
+             lower = list(combo = wrap("facethist", bins = 20)))
+p
+```
+
+Most of the variables have very skewed distributions, for example `Lif.Exp` and `GNI`.
+Only `Edu.Exp` seems to be almost normally distributed.
+
+Visualize the correlation between the variables:
+```{r fig.cap="Correlation"}
+cor(human) %>% corrplot()
+```
+
+There is a group of highly correlated variables:
+`Edu.Exp`, `Lif.Exp`, `GNI`, `Mat.Mor`, `Ado.Birth`.
+`Edu.Exp` and `Lif.Exp` are positively correlated; `Edu.Exp` and `Mat.Mor` are negatively correlated.
+
+Summaries of the variables:
+```{r}
+summary(human)
+```
+
+## Principal component analysis
+Perform principal component analysis (PCA) using singular value decomposition (SVD) method for un-standardized dataset. The variability captured by the principal components:
+```{r}
+pca_human <- prcomp(human)
+s <- summary(pca_human)
+s
+```
+
+```{r fig.height=10, fig.width=12, fig.cap="Countries plotted againts the two first principal components for the un-standardized dataset", warning=F}
+pca_pr <- round(100*s$importance[2,], digits = 1) 
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+biplot(pca_human, choices = 1:2, cex=c(0.7,1), col=c("grey40", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2])
+```
+
+Gross national income per capita `GNI` seems to explain most of the variation in the dataset.
+The values of the `GNI` variable are much larger than the other variables and it dominates in the PCA analysis of the un-standardized dataset.
+
+Next, standardize the dataset so that every variable has a mean of 0 and a standard deviation of 1 and perform PCA on the standardized dataset.
+The summary for the standardized variables:
+```{r}
+human_std <- scale(human)
+summary(human_std)
+```
+
+The variability captured by the principal components:
+```{r}
+pca_human_std <- prcomp(human_std)
+s <- summary(pca_human_std)
+s
+```
+
+```{r fig.height=10, fig.width=12, fig.cap="Countries plotted against the two first principal components for the standardized dataset."}
+pca_pr <- round(100*s$importance[2,], digits = 1) 
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+biplot(pca_human_std, choices = 1:2, cex=c(0.7,1), col=c("grey40", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2])
+```
+
+The expected years of education, life expectancy at birth, gross national income per capita and the ratio of women to men with at least secondary education seem to correlate with each other as well as with `PC1`.
+Maternal mortality and adolescent birth rates are inversely correlated to the former variables and also correlated with `PC1`.
+The ratio of women to men in the labor force is correlated with the percentage of women representatives in the parliament and this is correlated with `PC2`.
+
+The first principal component seems to separate the countries based on variables related to health, education and wealth.
+The second principal component captures the variability in the participation of women to work and political life in the society.
+
+## Tea dataset: Multiple Correspondence Analysis
+Load the `tea` dataset from the package `FactoMineR`. The dataset represents a questionnaire on tea made in 300 individuals: how they drink tea (18 questions), what are their product's perceptions (12), and personal details.
+The structure of the dataset: 
+```{r}
+library("FactoMineR")
+data(tea)
+str(tea)
+```
+
+The dataset contains 300 observations of 36 variables. Visualize the dataset:
+```{r fig.height=10, fig.width=12, fig.cap="Variables and the distribution of their values", warning=F}
+gather(tea) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
+```
+
+Perform multiple correspondence analysis (MCA) on the dataset using a subset of variables: `Tea`, `How`, `how`, `sugar`, `where`, `lunch`:
+```{r}
+keep_columns <- c("Tea", "How", "how", "sugar", "where", "lunch")
+tea_time <- dplyr::select(tea, one_of(keep_columns))
+mca <- MCA(tea_time, graph = FALSE)
+summary(mca)
+```
+
+The first dimension explains 15% of the variation and the second dimension 14% variation in the data.
+Variables `how` and `where` have the strongest link to the first and second dimension.
+
+Visualize the MCA results:
+```{r fig.height=10, fig.width=12, fig.cap=paste0("Variable biplot of the MCA analysis results on the 'tea' dataset with variables *", paste0(keep_columns, collapse='*, *'), "*.")}
+plot(mca, invisible=c("ind"), habillage= "quali")
+```
+
+Based on the plot, individuals who use unpackaged tea tend to buy their tea from tea shops, and prefer green tea.
+On the other hand, individuals who use tea bags buy them often from chain stores.
