@@ -1,6 +1,6 @@
 # Boris Vassilev
 # 2018-11-07
-# Exercise 4, Data wrangling
+# Exercise 4+5, Data wrangling
 
 library(dplyr)
 
@@ -49,4 +49,25 @@ human <- inner_join(hd, gii, by = 'Country')
 dim(human)
 
 # Write dataset to file
-write.csv(human, "data/human.csv", row.names = FALSE)
+#write.csv(human, "data/human.csv", row.names = FALSE)
+
+# Structure of the data
+str(human)
+
+human <- mutate(human, GNI= as.numeric(sub(",", "", GNI)))
+keep_vars <- c("Country", "Edu2.FM", "Labo.FM", "Edu.Exp", "Life.Exp",
+                "GNI", "Mat.Mor", "Ado.Birth", "Parli.F")
+human <- dplyr::select(human, one_of(keep_vars))
+human <- drop_na(human)
+regions <- c("Arab States", "East Asia and the Pacific",
+             "Europe and Central Asia", "Latin America and the Caribbean",
+             "South Asia", "Sub-Saharan Africa", "World")
+human <- filter(human, !Country %in% regions)
+rownames(human) <- human$Country
+human <- select(human, -Country)
+
+# Check
+dim(human)
+
+# Write dataset to file
+write.csv(human, "data/human.csv", row.names = TRUE)
