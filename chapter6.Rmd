@@ -132,7 +132,7 @@ The baseline `bprs` values is strongly associated with the `bprs` values taken a
 still, there is no evidence of a treatment difference even after conditioning on the baseline value.
 
 ## RATS dataset
-The RATS dataset comes from a nutrition study conducted in three groups of... you guessed it, **rats**.
+The RATS dataset comes from a nutrition study conducted in three groups of... you guessed it, *rats*.
 The groups were on different diets.
 The body weight of each animal was recorder weekly over a period of 9 weeks (except in week 7: it was recorder twice).
 
@@ -158,8 +158,6 @@ The weight of the rats in group 1 is lower at the start of the follow-up compare
 ### Linear regression model
 Fit a linear regression model where `Weight` is the outcome and `Group` and `Time` are the explanatory variables:
 
-$$Weight \sim Group + Time$$.
-
 We are making the (highly unlikely!) assumption that the consecutive weights of the same animal are independent:
 ```{r}
 RATS_reg <- lm(Weight ~ Time + Group, data=RATSL)
@@ -167,7 +165,7 @@ summary(RATS_reg)
 ```
 
 Weight is statistically significantly higher in groups 2 and 3 compared to group 1.
-The regression coefficient of time is $<1$ and statistically significant:
+The regression coefficient of time is smaller than 1 and statistically significant:
 the weight of the animals goes down during the follow-up.
 
 ### Linear mixed-effects models
@@ -202,7 +200,7 @@ anova(RATS_ref1, RATS_ref)
 The _p_-value is highly significant and the log-likelihood of the random intercept and random slope is greater than that of the random slope model.
 This suggests that it fits the data better: the fit is better the closer to 0 the log-likelihood of the model is.
 
-To test if the growth profiles of the rats differ between the groups, fit a random intercept and slope model that allows for a `Group` × `Time` interaction:
+To test if the growth profiles of the rats differ between the groups, fit a random intercept and slope model that allows for a `Group` times `Time` interaction:
 ```{r}
 RATS_ref2 <- lmer(Weight ~ Time + Group + Time * Group + (Time | ID), data = RATSL, REML = FALSE)
 summary(RATS_ref2)
